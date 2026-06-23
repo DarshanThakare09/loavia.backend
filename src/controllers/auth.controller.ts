@@ -1,0 +1,105 @@
+import { Request, Response } from "express";
+import { AuthService } from "../services/auth.service";
+import { sendSuccess } from "../utils/apiResponse";
+import { env } from "../config/env";
+import {
+  registerSchema,
+  loginSchema,
+  verifyEmailSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from "../validators/auth.validator";
+import { asyncHandler } from "../utils/asyncHandler";
+
+const authService = new AuthService();
+
+const COOKIE_OPTIONS_ACCESS = {
+  httpOnly: true,
+  secure: env.NODE_ENV === "production",
+  sameSite: "strict" as const,
+  maxAge: 15 * 60 * 1000, // 15 minutes
+  path: "/",
+};
+
+const COOKIE_OPTIONS_REFRESH = {
+  httpOnly: true,
+  secure: env.NODE_ENV === "production",
+  sameSite: "strict" as const,
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  path: "/api/v1/auth", // Restricted to auth routes (refresh/logout)
+};
+
+export class AuthController {
+  register = asyncHandler(async (req: Request, res: Response) => {
+    const validatedBody = registerSchema.parse(req.body);
+    const user = await authService.register(validatedBody, req.ipAddress);
+    sendSuccess(res, user, "Registration successful. Please verify your email.", 201);
+  });
+
+  login = asyncHandler(async (req: Request, res: Response) => {
+    const validatedBody = loginSchema.parse(req.body);
+    const { accessToken, refreshToken, user } = await authService.login(validatedBody, req.ipAddress);
+
+    // Set Cookies
+    res.cookie("access_token", accessToken, COOKIE_OPTIONS_ACCESS);
+    res.cookie("refresh_token", refreshToken, COOKIE_OPTIONS_REFRESH);
+
+    sendSuccess(res, { user }, "Login successful");
+  });
+
+  logout = asyncHandler(async (req: Request, res: Response) => {
+    const refreshToken = req.cookies.refresh_token;
+
+    if (refreshToken) {
+      await authService.logout(refreshToken, req.ipAddress);
+    }
+
+    // Clear Cookies
+    res.clearCookie("access_token", { ...COOKIE_OPTIONS_ACCESS, maxAge: 0 });
+    res.clearCookie("refresh_token", { ...COOKIE_OPTIONS_REFRESH, maxAge: 0 });
+
+    sendSuccess(res, null, "Logout successful");
+  });
+
+  refresh = asyncHandler(async (req: Request, res: Response) => {
+    const refreshToken = req.cookies.refresh_token;
+    
+    // We pass the refresh token to service to rotate it
+    const { accessToken, refreshToken: newRefreshToken } = await authService.refresh(
+      refreshToken,
+      req.ipAddress
+    );
+
+    // Set Rotated Cookies
+    res.cookie("access_token", accessToken, COOKIE_OPTIONS_ACCESS);
+    res.cookie("refresh_token", newRefreshToken, COOKIE_OPTIONS_REFRESH);
+
+    sendSuccess(res, null, "Token refreshed successfully");
+  });
+
+  verifyEmail = asyncHandler(async (req: Request, res: Response) => {
+    const validatedQuery = verifyEmailSchema.parse(req.query);
+    await authService.verifyEmail(validatedQuery.token, req.ipAddress);
+    sendSuccess(res, null, "Email verified successfully");
+  });
+
+  forgotPassword = asyncHandler(async (req: Request, res: Response) => {
+    const validatedBody = forgotPasswordSchema.parse(req.body);
+    await authService.forgotPassword(validatedBody.email, req.ipAddress);
+    sendSuccess(res, null, "If the email is registered, a password reset link has been sent.");
+  });
+
+  resetPassword = asyncHandler(async (req: Request, res: Response) => {
+    const validatedBody = resetPasswordSchema.parse(req.body);
+    await authService.resetPassword(validatedBody.password, validatedBody.token, req.ipAddress);
+    sendSuccess(res, null, "Password has been reset successfully");
+  });
+
+  getMe = asyncHandler(async (req: Request, res: Response) => {
+    sendSuccess(res, req.user, "User profile retrieved successfully");
+  });
+
+  adminOnly = asyncHandler(async (_req: Request, res: Response) => {
+    sendSuccess(res, { message: "Welcome Admin!" }, "Authorized");
+  });
+}
