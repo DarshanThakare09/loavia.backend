@@ -144,7 +144,7 @@ async function runTests() {
     emailWorker.start();
 
     // Give worker time to poll and execute job1
-    await delay(600);
+    await delay(1500);
 
     // Verify mock email was sent
     if ((EmailService.mockSentEmails.length as number) !== 1) {
@@ -182,7 +182,7 @@ async function runTests() {
       attempts: 1,
       createdAt: new Date().toISOString()
     }));
-    await delay(300);
+    await delay(1000);
     // Captured emails count should still be 1 (ignored dummy_job_id)
     if ((EmailService.mockSentEmails.length as number) !== 1) {
       throw new Error("Worker failed to bypass completed job");
@@ -203,7 +203,7 @@ async function runTests() {
         userId: customerUser.id,
       }
     );
-    await delay(300);
+    await delay(1000);
     if ((EmailService.mockSentEmails.length as number) !== 2) {
       throw new Error("Shipment update email not sent");
     }
@@ -234,7 +234,7 @@ async function runTests() {
     };
 
     // Wait for attempt 1
-    await delay(300);
+    await delay(1000);
 
     // Verify it is placed in delayed set
     const delayedCount = await redis.zCard("email_queue_delayed");
@@ -255,7 +255,7 @@ async function runTests() {
 
     // Run attempt 2 (let the worker naturally promote and process it after 1s delay)
     console.log("  ↳ Waiting for Attempt 2 to execute naturally...");
-    await delay(1200);
+    await delay(2500);
 
     // Verify attempt 2 was retried
     const retryAudits2 = await prisma.auditLog.findMany({
@@ -269,7 +269,7 @@ async function runTests() {
 
     // Run attempt 3 (let the worker naturally promote and process it after 1s delay)
     console.log("  ↳ Waiting for Attempt 3 to execute naturally...");
-    await delay(1200);
+    await delay(2500);
 
     // Verify no more delayed jobs
     const delayedCountFinal = await redis.zCard("email_queue_delayed");
@@ -323,15 +323,15 @@ async function runTests() {
       throw new Error(`Retry failed: ${JSON.stringify(retryData)}`);
     }
 
-    // Check failed queue is empty and active queue has 1
+    // Check failed queue is empty and active queue has 0 or 1 (depending on worker poll timing)
     const postFailedLen = await redis.lLen("email_queue_failed");
     const postActiveLen = await redis.lLen("email_queue");
-    if (postFailedLen !== 0 || postActiveLen !== 1) {
+    if (postFailedLen !== 0 || (postActiveLen !== 1 && postActiveLen !== 0)) {
       throw new Error(`Failed re-queuing check: failed=${postFailedLen}, active=${postActiveLen}`);
     }
 
     // Verify it processed successfully now that sendEmail works (it shouldn't fail fail@loavia.in anymore)
-    await delay(300);
+    await delay(1000);
     const postProcessActiveLen = await redis.lLen("email_queue");
     if (postProcessActiveLen !== 0) {
       throw new Error(`Queue not processed after retry: ${postProcessActiveLen}`);

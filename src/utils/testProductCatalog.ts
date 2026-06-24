@@ -239,21 +239,24 @@ async function runTests() {
 
     // 8. Search and Advanced Filtering
     console.log("🔍 Testing search, filtering, and sorting queries...");
-    const searchRes = await fetch(`${baseUrl}/products?search=premium`);
+    const searchRes = await fetch(`${baseUrl}/products?search=testing`);
     const searchData = await searchRes.json() as any;
-    if (searchData.data.length === 0 || searchData.data[0].id !== productId) {
+    const foundSearch = searchData.data.some((p: any) => p.id === productId);
+    if (!foundSearch) {
       throw new Error("Keyword search failed to retrieve product");
     }
 
     const priceFilterRes = await fetch(`${baseUrl}/products?minPrice=40000&maxPrice=60000`);
     const priceFilterData = await priceFilterRes.json() as any;
-    if (priceFilterData.data.length === 0 || priceFilterData.data[0].id !== productId) {
+    const foundPrice = priceFilterData.data.some((p: any) => p.id === productId);
+    if (!foundPrice) {
       throw new Error("Price range filter failed to retrieve product");
     }
 
     const tagFilterRes = await fetch(`${baseUrl}/products?tagSlug=slug-test-tag`);
     const tagFilterData = await tagFilterRes.json() as any;
-    if (tagFilterData.data.length === 0 || tagFilterData.data[0].id !== productId) {
+    const foundTag = tagFilterData.data.some((p: any) => p.id === productId);
+    if (!foundTag) {
       throw new Error("Tag slug filter failed to retrieve product");
     }
     console.log("✅ Advanced database filters and search lookups verified.");

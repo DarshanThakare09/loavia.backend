@@ -11,7 +11,10 @@ import {
 } from "../validators/auth.validator";
 import { asyncHandler } from "../utils/asyncHandler";
 
+import { UserRepository } from "../repositories/user.repository";
+
 const authService = new AuthService();
+const userRepository = new UserRepository();
 
 const COOKIE_OPTIONS_ACCESS = {
   httpOnly: true,
@@ -96,7 +99,17 @@ export class AuthController {
   });
 
   getMe = asyncHandler(async (req: Request, res: Response) => {
-    sendSuccess(res, req.user, "User profile retrieved successfully");
+    if (!req.user || !req.user.id) {
+      sendSuccess(res, null, "No active session", 200);
+      return;
+    }
+    const user = await userRepository.findById(req.user.id);
+    if (!user) {
+      sendSuccess(res, null, "User not found", 404);
+      return;
+    }
+    const { passwordHash, ...userWithoutPassword } = user;
+    sendSuccess(res, userWithoutPassword, "User profile retrieved successfully");
   });
 
   adminOnly = asyncHandler(async (_req: Request, res: Response) => {
