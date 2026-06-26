@@ -7,7 +7,6 @@ import cookieParser from "cookie-parser";
 import { env } from "./config/env";
 import { requestContext } from "./middleware/requestContext";
 import { requestLogger } from "./middleware/logging";
-import { apiLimiter } from "./middleware/rateLimiter";
 import { errorHandler } from "./middleware/error";
 import { NotFoundError } from "./errors/NotFoundError";
 import { sendSuccess } from "./utils/apiResponse";
@@ -39,8 +38,7 @@ app.use(
 );
 app.use(hpp());
 
-// Rate Limiting applied globally to all /api/ requests
-app.use("/api", apiLimiter);
+
 
 // Payload & Context Middlewares
 app.use(compression());
