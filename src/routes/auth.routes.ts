@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { AuthController } from "../controllers/auth.controller";
+import { authLimiter } from "../middleware/rateLimiter";
 
 import { authenticate } from "../middleware/auth";
 import { requireRole } from "../middleware/rbac";
@@ -9,10 +10,10 @@ const router = Router();
 const controller = new AuthController();
 
 // Rate-limited Auth routes
-router.post("/register", controller.register);
-router.post("/login", controller.login);
-router.post("/forgot-password", controller.forgotPassword);
-router.post("/reset-password", controller.resetPassword);
+router.post("/register", authLimiter, controller.register);
+router.post("/login", authLimiter, controller.login);
+router.post("/forgot-password", authLimiter, controller.forgotPassword);
+router.post("/reset-password", authLimiter, controller.resetPassword);
 
 // Standard Auth routes
 router.post("/logout", controller.logout);

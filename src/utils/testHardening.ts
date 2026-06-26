@@ -178,8 +178,8 @@ async function runTests() {
     console.log("\n🛡️ --- TEST 3: Rate Limiting Gating ---");
     
     // Reset/clear rate limits if needed or just spam login
-    // Since authLimiter has been removed, no requests should be blocked.
-    console.log("⚡ Spamming /auth/login with 12 rapid calls (expecting no blocking)...");
+    // Since authLimiter is active, customer spam requests should be blocked.
+    console.log("⚡ Spamming /auth/login with 12 rapid calls (expecting rate limiting to block)...");
     let blockCount = 0;
 
     for (let i = 0; i < 12; i++) {
@@ -194,10 +194,10 @@ async function runTests() {
     }
 
     console.log(`📊 Requests blocked with 429: ${blockCount}`);
-    if (blockCount !== 0) {
-      throw new Error("Rate limiting is still active and blocked some requests!");
+    if (blockCount === 0) {
+      throw new Error("Rate limiting did not block rapid customer login attempts!");
     }
-    console.log("✅ Rate limiter successfully disabled (0 requests blocked).");
+    console.log("✅ Rate limiter successfully blocked customer spam requests (status 429).");
 
     // --- TEST 4: RBAC Penetration Gating Test ---
     console.log("\n🛡️ --- TEST 4: RBAC Penetration Gating ---");
