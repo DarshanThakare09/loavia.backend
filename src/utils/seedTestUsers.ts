@@ -6,7 +6,7 @@ const SUPER_ADMIN_EMAIL = "super_admin_test@loavia.in";
 const ADMIN_EMAIL = "admin_test@loavia.in";
 const STAFF_EMAIL = "staff_test@loavia.in";
 const CUSTOMER_EMAIL = "customer_test@loavia.in";
-const TEST_PASSWORD = "password123";
+const TEST_PASSWORD = "AdminPassword@123";
 
 async function main() {
   console.log("👤 Seeding test users...");
@@ -17,6 +17,7 @@ async function main() {
     { name: "Test Admin", email: ADMIN_EMAIL, role: UserRole.ADMIN },
     { name: "Test Staff", email: STAFF_EMAIL, role: UserRole.STAFF },
     { name: "Test Customer", email: CUSTOMER_EMAIL, role: UserRole.CUSTOMER },
+    { name: "Admin User", email: "admin@loavia.com", role: UserRole.ADMIN },
   ];
 
   for (const u of users) {

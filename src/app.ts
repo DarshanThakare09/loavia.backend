@@ -32,7 +32,10 @@ const app = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: env.FRONTEND_URL,
+    origin: (origin, callback) => {
+      // Allow any origin dynamically for testing across different network hosts/IPs
+      callback(null, origin || true);
+    },
     credentials: true,
   })
 );
