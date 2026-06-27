@@ -2,6 +2,9 @@ import { prisma } from "../config/prisma";
 import { redis } from "../config/redis";
 import { Cart, CartItem } from "@prisma/client";
 
+// In-memory fallback for guest carts when Redis is offline
+const memoryCart: Record<string, string> = {};
+
 export interface GuestCartItemInput {
   variantId: string;
   quantity: number;
@@ -113,7 +116,17 @@ export class CartRepository {
   // REDIS: Find guest cart by session ID and hydrate it with DB product details
   async findCartBySessionId(sessionId: string) {
     const key = `guest_cart:${sessionId}`;
-    const rawData = await redis.get(key);
+    let rawData: string | null = null;
+    
+    try {
+      if (redis.isOpen) {
+        rawData = await redis.get(key);
+      } else {
+        rawData = memoryCart[key] || null;
+      }
+    } catch (err) {
+      rawData = memoryCart[key] || null;
+    }
     
     if (!rawData) {
       return {
@@ -187,13 +200,30 @@ export class CartRepository {
   // REDIS: Save guest cart
   async saveGuestCart(sessionId: string, items: GuestCartItemInput[]): Promise<void> {
     const key = `guest_cart:${sessionId}`;
-    // Store with 30 days TTL (2592000 seconds)
-    await redis.setEx(key, 2592000, JSON.stringify(items));
+    const value = JSON.stringify(items);
+    try {
+      if (redis.isOpen) {
+        // Store with 30 days TTL (2592000 seconds)
+        await redis.setEx(key, 2592000, value);
+      } else {
+        memoryCart[key] = value;
+      }
+    } catch (err) {
+      memoryCart[key] = value;
+    }
   }
 
   // REDIS: Clear guest cart
   async clearGuestCart(sessionId: string): Promise<void> {
     const key = `guest_cart:${sessionId}`;
-    await redis.del(key);
+    try {
+      if (redis.isOpen) {
+        await redis.del(key);
+      } else {
+        delete memoryCart[key];
+      }
+    } catch (err) {
+      delete memoryCart[key];
+    }
   }
 }

@@ -4,6 +4,7 @@ import { logger } from "./logger";
 
 export const redis = createClient({
   url: env.REDIS_URL,
+  disableOfflineQueue: true,
 });
 
 redis.on("connect", () => {
