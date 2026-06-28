@@ -54,6 +54,12 @@ export class AdminCatalogController {
     sendSuccess(res, product, "Product updated successfully");
   });
 
+  getProduct = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const product = await productService.getProductById(id);
+    sendSuccess(res, product, "Product retrieved successfully");
+  });
+
   deleteProduct = asyncHandler(async (req: Request, res: Response) => {
     const actorId = req.user!.id;
     const { id } = req.params;

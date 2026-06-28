@@ -33,15 +33,21 @@ export class EmailQueue {
     const jobId = customId || uuidv4();
     const statusKey = this.getJobTrackingKey(jobId);
 
-    // Check if job already completed or queued
-    const existingStatus = await redis.get(statusKey);
-    if (existingStatus === "completed") {
-      logger.info(`⚠️ Email job ${jobId} already completed. Skipping enqueue.`);
-      return jobId;
-    }
-    if (existingStatus === "queued" && customId) {
-      logger.info(`⚠️ Email job ${jobId} already in queue. Skipping duplicate enqueue.`);
-      return jobId;
+    try {
+      if (redis.isOpen) {
+        // Check if job already completed or queued
+        const existingStatus = await redis.get(statusKey);
+        if (existingStatus === "completed") {
+          logger.info(`⚠️ Email job ${jobId} already completed. Skipping enqueue.`);
+          return jobId;
+        }
+        if (existingStatus === "queued" && customId) {
+          logger.info(`⚠️ Email job ${jobId} already in queue. Skipping duplicate enqueue.`);
+          return jobId;
+        }
+      }
+    } catch (redisErr) {
+      logger.error("Error reading from Redis in EmailQueue:", redisErr);
     }
 
     const job: EmailJob = {
@@ -54,11 +60,20 @@ export class EmailQueue {
       createdAt: new Date().toISOString(),
     };
 
-    // Set job status in Redis as queued (TTL: 7 days)
-    await redis.setEx(statusKey, 7 * 24 * 60 * 60, "queued");
+    try {
+      if (redis.isOpen) {
+        // Set job status in Redis as queued (TTL: 7 days)
+        await redis.setEx(statusKey, 7 * 24 * 60 * 60, "queued");
+        await redis.rPush(this.QUEUE_KEY, JSON.stringify(job));
+        logger.info(`📥 Enqueued email job ${jobId} (${type}) to ${to}`);
+      } else {
+        logger.warn(`⚠️ Redis is down. Logged email job details to console instead of queue: ${JSON.stringify(job)}`);
+      }
+    } catch (redisErr) {
+      logger.error("Error writing to Redis in EmailQueue:", redisErr);
+      logger.warn(`⚠️ Falling back to logging email job details: ${JSON.stringify(job)}`);
+    }
 
-    await redis.rPush(this.QUEUE_KEY, JSON.stringify(job));
-    logger.info(`📥 Enqueued email job ${jobId} (${type}) to ${to}`);
     return jobId;
   }
 

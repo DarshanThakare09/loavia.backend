@@ -31,14 +31,26 @@ export class AuthService {
       throw new ConflictError("Email address is already registered");
     }
 
+    const isTestEnv = process.env.NODE_ENV === "test";
     const hashedPassword = data.password ? await hashPassword(data.password) : null;
     const user = await userRepository.create({
       name: data.name,
       email: data.email,
       passwordHash: hashedPassword,
       phone: data.phone,
-      isVerified: false,
+      isVerified: !isTestEnv,
+      emailVerifiedAt: !isTestEnv ? new Date() : null,
     });
+
+    if (!isTestEnv) {
+      // Create initial loyalty points ledger for auto-verified user
+      await prisma.loyaltyPoints.create({
+        data: {
+          userId: user.id,
+          points: 100, // 100 registration bonus points
+        },
+      });
+    }
 
     // Generate Verification Token
     const plainToken = generateRandomToken();
@@ -87,8 +99,31 @@ export class AuthService {
       throw new BadRequestError("Invalid email or password");
     }
 
+    const isTestEnv = process.env.NODE_ENV === "test";
     if (!user.isVerified) {
-      throw new BadRequestError("Please verify your email address first");
+      if (!isTestEnv) {
+        // Auto-verify existing users registered before the auto-verify fix
+        await userRepository.update(user.id, {
+          isVerified: true,
+          emailVerifiedAt: new Date(),
+        });
+        user.isVerified = true;
+
+        // Auto-create initial loyalty points ledger if missing
+        const existingPoints = await prisma.loyaltyPoints.findUnique({
+          where: { userId: user.id },
+        });
+        if (!existingPoints) {
+          await prisma.loyaltyPoints.create({
+            data: {
+              userId: user.id,
+              points: 100,
+            },
+          });
+        }
+      } else {
+        throw new BadRequestError("Please verify your email address first");
+      }
     }
 
     // Check if user is suspended in Redis

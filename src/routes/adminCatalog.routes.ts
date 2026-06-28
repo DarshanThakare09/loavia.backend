@@ -31,6 +31,7 @@ router.get("/categories", controller.getCategories);
 router.post("/products", validate({ body: createProductSchema }), controller.createProduct);
 router.put("/products/:id", validate({ body: updateProductSchema }), controller.updateProduct);
 router.delete("/products/:id", controller.deleteProduct);
+router.get("/products/:id", controller.getProduct);
 router.get("/products", controller.getProducts);
 
 // --- Collection Routes ---

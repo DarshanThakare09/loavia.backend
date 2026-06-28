@@ -3,12 +3,15 @@ import { Prisma, User } from "@prisma/client";
 
 export class UserRepository {
   async create(data: Prisma.UserCreateInput): Promise<User> {
+    if (data.email) {
+      data.email = data.email.toLowerCase().trim();
+    }
     return prisma.user.create({ data });
   }
 
   async findByEmail(email: string): Promise<User | null> {
     return prisma.user.findUnique({
-      where: { email },
+      where: { email: email.toLowerCase().trim() },
     });
   }
 
@@ -19,6 +22,9 @@ export class UserRepository {
   }
 
   async update(id: string, data: Prisma.UserUpdateInput): Promise<User> {
+    if (data.email && typeof data.email === "string") {
+      data.email = data.email.toLowerCase().trim();
+    }
     return prisma.user.update({
       where: { id },
       data,
