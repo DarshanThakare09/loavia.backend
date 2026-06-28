@@ -1,6 +1,8 @@
 import rateLimit from "express-rate-limit";
 import { Request, Response, NextFunction } from "express";
 import { logger } from "../config/logger";
+import { prisma } from "../config/prisma";
+import { UserRole } from "@prisma/client";
 
 const logRateLimitViolation = (req: Request, _options: any) => {
   logger.warn(`Rate limit exceeded by IP: ${req.ip} for path: ${req.path} [Request ID: ${req.id}]`);
@@ -29,6 +31,23 @@ export const authLimiter = rateLimit({
   message: {
     success: false,
     message: "Too many authentication attempts, please try again after 15 minutes."
+  },
+  skip: async (req: Request) => {
+    try {
+      const email = req.body?.email;
+      if (email) {
+        const user = await prisma.user.findUnique({
+          where: { email },
+          select: { role: true }
+        });
+        if (user && (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.STAFF)) {
+          return true; // Skip rate limiting for Admin/Super Admin/Staff
+        }
+      }
+    } catch (err) {
+      // Ignore database errors and apply rate limit by default
+    }
+    return false;
   },
   handler: (req: Request, res: Response, _next: NextFunction, options: any) => {
     logRateLimitViolation(req, options);

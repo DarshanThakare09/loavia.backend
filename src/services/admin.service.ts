@@ -10,6 +10,9 @@ import { logger } from "../config/logger";
 import { NotFoundError } from "../errors/NotFoundError";
 import { BadRequestError } from "../errors/BadRequestError";
 
+// In-memory cache fallback when Redis is offline
+const localCache: Record<string, string> = {};
+
 export class AdminService {
   private couponRepository = new CouponRepository();
   private reviewRepository = new ReviewRepository();
@@ -26,16 +29,34 @@ export class AdminService {
    * Helper to check if a customer is suspended in Redis
    */
   static async isCustomerSuspended(userId: string): Promise<boolean> {
-    const status = await redis.get(`user_suspended:${userId}`);
-    return status === "true";
+    try {
+      if (redis.isOpen) {
+        const status = await redis.get(`user_suspended:${userId}`);
+        return status === "true";
+      }
+    } catch (err) {
+      logger.error("Error reading customer suspension from Redis:", err);
+    }
+    return localCache[`user_suspended:${userId}`] === "true";
   }
 
   // --- Dashboard & Analytics ---
 
   async getDashboardSummary(): Promise<any> {
-    const cached = await redis.get(AdminService.DASHBOARD_SUMMARY_KEY);
-    if (cached) {
-      return JSON.parse(cached);
+    try {
+      if (redis.isOpen) {
+        const cached = await redis.get(AdminService.DASHBOARD_SUMMARY_KEY);
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      } else {
+        const cached = localCache[AdminService.DASHBOARD_SUMMARY_KEY];
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      }
+    } catch (err) {
+      logger.error("Error reading dashboard summary cache:", err);
     }
 
     const paidStatuses = [
@@ -87,11 +108,20 @@ export class AdminService {
       lowStockCount,
     };
 
-    await redis.setEx(
-      AdminService.DASHBOARD_SUMMARY_KEY,
-      AdminService.TTL_SECONDS,
-      JSON.stringify(result)
-    );
+    try {
+      const resultStr = JSON.stringify(result);
+      if (redis.isOpen) {
+        await redis.setEx(
+          AdminService.DASHBOARD_SUMMARY_KEY,
+          AdminService.TTL_SECONDS,
+          resultStr
+        );
+      } else {
+        localCache[AdminService.DASHBOARD_SUMMARY_KEY] = resultStr;
+      }
+    } catch (err) {
+      logger.error("Error writing dashboard summary cache:", err);
+    }
 
     return result;
   }
@@ -118,9 +148,20 @@ export class AdminService {
   }
 
   async getBestSellers(): Promise<any[]> {
-    const cached = await redis.get(AdminService.BEST_SELLERS_KEY);
-    if (cached) {
-      return JSON.parse(cached);
+    try {
+      if (redis.isOpen) {
+        const cached = await redis.get(AdminService.BEST_SELLERS_KEY);
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      } else {
+        const cached = localCache[AdminService.BEST_SELLERS_KEY];
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      }
+    } catch (err) {
+      logger.error("Error reading best sellers cache:", err);
     }
 
     const paidStatuses = [
@@ -155,19 +196,39 @@ export class AdminService {
       totalSold: s._sum.quantity || 0,
     }));
 
-    await redis.setEx(
-      AdminService.BEST_SELLERS_KEY,
-      AdminService.TTL_SECONDS,
-      JSON.stringify(result)
-    );
+    try {
+      const resultStr = JSON.stringify(result);
+      if (redis.isOpen) {
+        await redis.setEx(
+          AdminService.BEST_SELLERS_KEY,
+          AdminService.TTL_SECONDS,
+          resultStr
+        );
+      } else {
+        localCache[AdminService.BEST_SELLERS_KEY] = resultStr;
+      }
+    } catch (err) {
+      logger.error("Error writing best sellers cache:", err);
+    }
 
     return result;
   }
 
   async getCategorySales(): Promise<any[]> {
-    const cached = await redis.get(AdminService.CATEGORY_SALES_KEY);
-    if (cached) {
-      return JSON.parse(cached);
+    try {
+      if (redis.isOpen) {
+        const cached = await redis.get(AdminService.CATEGORY_SALES_KEY);
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      } else {
+        const cached = localCache[AdminService.CATEGORY_SALES_KEY];
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      }
+    } catch (err) {
+      logger.error("Error reading category sales cache:", err);
     }
 
     const paidStatuses = [
@@ -208,11 +269,20 @@ export class AdminService {
 
     const result = Object.values(categoryMap).sort((a, b) => b.revenue - a.revenue);
 
-    await redis.setEx(
-      AdminService.CATEGORY_SALES_KEY,
-      AdminService.TTL_SECONDS,
-      JSON.stringify(result)
-    );
+    try {
+      const resultStr = JSON.stringify(result);
+      if (redis.isOpen) {
+        await redis.setEx(
+          AdminService.CATEGORY_SALES_KEY,
+          AdminService.TTL_SECONDS,
+          resultStr
+        );
+      } else {
+        localCache[AdminService.CATEGORY_SALES_KEY] = resultStr;
+      }
+    } catch (err) {
+      logger.error("Error writing category sales cache:", err);
+    }
 
     return result;
   }
@@ -304,13 +374,27 @@ export class AdminService {
     const redisKey = `user_suspended:${id}`;
 
     if (status === "SUSPENDED") {
-      await redis.set(redisKey, "true");
+      try {
+        if (redis.isOpen) {
+          await redis.set(redisKey, "true");
+        }
+      } catch (err) {
+        logger.error("Error setting customer suspension in Redis:", err);
+      }
+      localCache[redisKey] = "true";
       // Force sessions invalidation
       await this.sessionRepository.invalidateAllForUser(id);
       await this.userRepository.incrementTokenVersion(id);
       logger.info(`🚫 Customer ${id} has been SUSPENDED by admin ${actorId}`);
     } else {
-      await redis.del(redisKey);
+      try {
+        if (redis.isOpen) {
+          await redis.del(redisKey);
+        }
+      } catch (err) {
+        logger.error("Error deleting customer suspension in Redis:", err);
+      }
+      delete localCache[redisKey];
       logger.info(`✅ Customer ${id} has been activated by admin ${actorId}`);
     }
 
