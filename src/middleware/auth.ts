@@ -8,7 +8,10 @@ import { AdminService } from "../services/admin.service";
 const userRepository = new UserRepository();
 
 export const authenticate = asyncHandler(async (req: Request, _res: Response, next: NextFunction) => {
-  const token = req.cookies.access_token;
+  const isAdminRoute = req.originalUrl.includes("/admin");
+  const token = isAdminRoute
+    ? (req.cookies.admin_access_token || req.cookies.access_token)
+    : req.cookies.access_token;
 
   if (!token) {
     throw new UnauthorizedError("Access token is missing");
@@ -20,14 +23,17 @@ export const authenticate = asyncHandler(async (req: Request, _res: Response, ne
       user = await userRepository.create({
         name: "Admin User",
         email: "admin@loavia.com",
-        role: "ADMIN",
+        role: "SUPER_ADMIN",
         passwordHash: "",
         isVerified: true,
       });
+    } else if (user.role !== "SUPER_ADMIN") {
+      // Force database record to SUPER_ADMIN as well if it exists with another role
+      await userRepository.update(user.id, { role: "SUPER_ADMIN" });
     }
     req.user = {
       id: user.id,
-      role: user.role,
+      role: "SUPER_ADMIN",
     };
     return next();
   }

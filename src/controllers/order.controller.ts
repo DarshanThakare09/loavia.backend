@@ -4,6 +4,8 @@ import { sendSuccess } from "../utils/apiResponse";
 import { BadRequestError } from "../errors/BadRequestError";
 import { asyncHandler } from "../utils/asyncHandler";
 import { UserRole } from "@prisma/client";
+import { prisma } from "../config/prisma";
+
 
 export class OrderController {
   private orderService = new OrderService();
@@ -33,7 +35,7 @@ export class OrderController {
     } else if (guestItems && guestItems.length > 0) {
       // Validate guest items input
       const variantIds = guestItems.map((i: any) => i.variantId);
-      const dbVariants = await (this.orderService as any).prisma.productVariant.findMany({
+      const dbVariants = await prisma.productVariant.findMany({
         where: { id: { in: variantIds }, isDeleted: false },
       });
 
