@@ -34,6 +34,7 @@ const optionalAuthenticate = asyncHandler(async (req: Request, _res: Response, n
 
 // Checkout Pricing Validation
 router.post("/checkout/validate", optionalAuthenticate, controller.validateCheckout);
+router.get("/checkout/coupons", optionalAuthenticate, controller.getPublicCoupons);
 
 // Customer Place & Manage Orders
 router.post("/orders", optionalAuthenticate, validate({ body: placeOrderSchema as any }), controller.placeOrder);

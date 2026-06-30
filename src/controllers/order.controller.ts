@@ -22,18 +22,8 @@ export class OrderController {
 
     let itemsToCalculate: any[] = [];
 
-    if (userId) {
-      // Load user DB cart
-      const dbCart = await (this.orderService as any).cartRepository.findCartByUserId(userId);
-      if (!dbCart || dbCart.items.length === 0) {
-        throw new BadRequestError("Your cart is empty");
-      }
-      itemsToCalculate = dbCart.items.map((item: any) => ({
-        price: item.variant.discountPrice !== null ? item.variant.discountPrice : item.variant.price,
-        quantity: item.quantity,
-      }));
-    } else if (guestItems && guestItems.length > 0) {
-      // Validate guest items input
+    if (guestItems && guestItems.length > 0) {
+      // Validate guest/payload items input
       const variantIds = guestItems.map((i: any) => i.variantId);
       const dbVariants = await prisma.productVariant.findMany({
         where: { id: { in: variantIds }, isDeleted: false },
@@ -49,6 +39,16 @@ export class OrderController {
           quantity: item.quantity,
         };
       });
+    } else if (userId) {
+      // Load user DB cart as fallback
+      const dbCart = await (this.orderService as any).cartRepository.findCartByUserId(userId);
+      if (!dbCart || dbCart.items.length === 0) {
+        throw new BadRequestError("Your cart is empty");
+      }
+      itemsToCalculate = dbCart.items.map((item: any) => ({
+        price: item.variant.discountPrice !== null ? item.variant.discountPrice : item.variant.price,
+        quantity: item.quantity,
+      }));
     } else {
       throw new BadRequestError("No items provided for calculation");
     }
@@ -108,5 +108,22 @@ export class OrderController {
 
     const order = await this.orderService.cancelOrder(orderId, userId, role, ipAddress);
     sendSuccess(res, order, "Order cancelled successfully");
+  });
+
+  // GET /api/v1/checkout/coupons
+  getPublicCoupons = asyncHandler(async (_req: Request, res: Response) => {
+    const coupons = await prisma.coupon.findMany({
+      where: {
+        active: true,
+        isDeleted: false,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+    sendSuccess(res, coupons, "Coupons retrieved successfully");
   });
 }
