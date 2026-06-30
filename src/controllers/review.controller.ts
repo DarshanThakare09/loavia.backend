@@ -96,3 +96,22 @@ export const submitReview = asyncHandler(async (req: Request, res: Response) => 
 
   return sendSuccess(res, review, "Review submitted successfully and is pending moderation.", 201);
 });
+
+// GET /api/v1/reviews
+// Public endpoint — retrieves all APPROVED reviews to display on the storefront.
+export const getApprovedReviews = asyncHandler(async (_req: Request, res: Response) => {
+  const reviews = await prisma.review.findMany({
+    where: {
+      status: "APPROVED",
+    },
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      product: { select: { id: true, name: true } },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+  return sendSuccess(res, reviews, "Approved reviews retrieved successfully");
+});
+

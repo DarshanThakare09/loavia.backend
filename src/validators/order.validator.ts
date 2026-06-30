@@ -34,6 +34,7 @@ export const placeOrderSchema = z.object({
     email: z.string().email("Invalid email format").optional(), // Optional for auth users, required for guest checkouts
   }).optional(),
   couponCode: z.string().optional(),
+  customGiftNote: z.string().optional(),
   items: z.array(guestItemSchema).optional(),
 }).refine((data) => {
   if (!data.addressId && !data.shippingAddress) {

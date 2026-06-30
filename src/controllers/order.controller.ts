@@ -63,7 +63,7 @@ export class OrderController {
     const sessionId = this.getSessionId(req);
     const ipAddress = req.ip;
 
-    const { couponCode, shippingAddress, addressId, items: guestItems } = req.body;
+    const { couponCode, shippingAddress, addressId, items: guestItems, customGiftNote } = req.body;
 
     const order = await this.orderService.placeOrder(
       userId,
@@ -72,7 +72,8 @@ export class OrderController {
       shippingAddress,
       addressId,
       guestItems,
-      ipAddress
+      ipAddress,
+      customGiftNote
     );
 
     sendSuccess(res, order, "Order placed successfully", 201);

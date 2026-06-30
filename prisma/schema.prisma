@@ -321,6 +321,7 @@ model Order {
   taxAmount       Int         @map("tax_amount") // stored in Paise
   totalAmount     Int         @map("total_amount") // stored in Paise
   shippingAddress Json        @map("shipping_address")
+  customGiftNote  String?     @map("custom_gift_note") @db.Text
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
 

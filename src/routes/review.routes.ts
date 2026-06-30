@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { submitReview } from "../controllers/review.controller";
+import { submitReview, getApprovedReviews } from "../controllers/review.controller";
 import { validate } from "../middleware/validator";
 import { verifyAccessToken } from "../utils/jwt";
 import { UserRepository } from "../repositories/user.repository";
@@ -24,6 +24,12 @@ const optionalAuthenticate = asyncHandler(async (req: Request, _res: Response, n
   }
   next();
 });
+
+// GET /api/v1/reviews — get all approved reviews
+router.get(
+  "/reviews",
+  getApprovedReviews
+);
 
 // POST /api/v1/reviews — submit a new review (guest or authenticated)
 router.post(

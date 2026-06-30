@@ -94,7 +94,8 @@ export class OrderService {
     shippingAddressInput?: any,
     addressId?: string,
     guestItemsInput?: any[],
-    ipAddress?: string | null
+    ipAddress?: string | null,
+    customGiftNote?: string
   ): Promise<Order> {
     if (userId) {
       const isSuspended = await AdminService.isCustomerSuspended(userId);
@@ -238,6 +239,7 @@ export class OrderService {
             shippingFee: totals.shippingFee,
             totalAmount: totals.totalAmount,
             shippingAddress,
+            customGiftNote: customGiftNote || null,
           },
           tx
         );
