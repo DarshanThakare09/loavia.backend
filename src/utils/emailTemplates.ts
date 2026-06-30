@@ -339,3 +339,28 @@ export function renderShipmentUpdateEmail(
   `;
   return baseLayout(title, content);
 }
+
+export function renderContactResponseEmail(
+  name: string,
+  originalMessage: string,
+  responseText: string
+): string {
+  const content = `
+    <h1>Hello ${escapeHtml(name)},</h1>
+    <p>Thank you for reaching out to LOAVIA. We have reviewed your query and our team has responded to it.</p>
+    
+    <div style="background-color: #2e2e33; border-left: 4px solid #d4af37; padding: 15px; margin: 20px 0; border-radius: 6px;">
+      <p style="margin: 0; font-size: 12px; color: #8a8a93; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Your Message:</p>
+      <p style="margin: 5px 0 0 0; font-style: italic; color: #eaeaea;">"${escapeHtml(originalMessage)}"</p>
+    </div>
+
+    <div style="background-color: #252e2a; border-left: 4px solid #10B981; padding: 15px; margin: 20px 0; border-radius: 6px;">
+      <p style="margin: 0; font-size: 12px; color: #10B981; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Our Response:</p>
+      <p style="margin: 5px 0 0 0; color: #eaeaea; font-weight: 500; white-space: pre-wrap;">${escapeHtml(responseText)}</p>
+    </div>
+
+    <p>If you have any further questions, feel free to reply directly to this email or drop us another note.</p>
+    <p>Warm regards,<br>Team LOAVIA</p>
+  `;
+  return baseLayout("Response to your LOAVIA Inquiry", content);
+}

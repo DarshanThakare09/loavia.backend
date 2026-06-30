@@ -344,6 +344,9 @@ export class AdminService {
           take: 10,
         },
         loyaltyPoints: true,
+        contactMessages: {
+          orderBy: { createdAt: "desc" }
+        },
       },
     });
 
@@ -585,5 +588,54 @@ export class AdminService {
     ]);
 
     return { data, total };
+  }
+
+  async listContactMessages(skip = 0, take = 50): Promise<any> {
+    const [messages, total] = await Promise.all([
+      prisma.contactMessage.findMany({
+        skip,
+        take,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.contactMessage.count(),
+    ]);
+    return { data: messages, total };
+  }
+
+  async respondContactMessage(id: string, responseText: string): Promise<any> {
+    const message = await prisma.contactMessage.findFirst({
+      where: { id },
+    });
+
+    if (!message) {
+      throw new NotFoundError("Contact message not found");
+    }
+
+    const updatedMessage = await prisma.contactMessage.update({
+      where: { id },
+      data: {
+        responseText,
+        respondedAt: new Date(),
+        isResponded: true,
+      },
+    });
+
+    try {
+      const { EmailService } = await import("./email.service");
+      const emailService = new EmailService();
+      await emailService.sendContactResponseEmail(
+        message.email,
+        message.name,
+        message.message,
+        responseText
+      );
+      logger.info(`✅ Contact response email sent to ${message.email}`);
+    } catch (err: any) {
+      logger.error(`❌ Failed to send contact response email to ${message.email}: ${err.message}`);
+      // Re-throw so the controller returns a proper error to the admin
+      throw new Error(`Response saved but email could not be sent: ${err.message}`);
+    }
+
+    return updatedMessage;
   }
 }

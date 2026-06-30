@@ -105,11 +105,23 @@ router.put(
   controller.moderateReview
 );
 
-// --- Audit Logs (Admin, Super Admin) ---
 router.get(
   "/audit-logs",
   requireRole([UserRole.ADMIN, UserRole.SUPER_ADMIN]),
   controller.listAuditLogs
+);
+
+// --- Contact Messages (Staff, Admin, Super Admin) ---
+router.get(
+  "/contact-messages",
+  requireRole([UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN]),
+  controller.listContactMessages
+);
+
+router.post(
+  "/contact-messages/:id/respond",
+  requireRole([UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN]),
+  controller.respondContactMessage
 );
 
 export default router;

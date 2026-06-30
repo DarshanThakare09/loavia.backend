@@ -8,6 +8,7 @@ import {
   renderOrderReceiptEmail,
   renderLatePaymentReviewEmail,
   renderShipmentUpdateEmail,
+  renderContactResponseEmail,
   ReceiptItem,
 } from "../utils/emailTemplates";
 
@@ -32,9 +33,25 @@ export class EmailService {
       return;
     }
 
+    // Detect placeholder / unconfigured API key
+    if (
+      !env.RESEND_API_KEY ||
+      env.RESEND_API_KEY === "re_123456789" ||
+      env.RESEND_API_KEY.length < 20
+    ) {
+      logger.warn(`⚠️  RESEND_API_KEY is not configured. Email to ${to} was NOT sent. Set a real key in .env`);
+      throw new Error("Email service is not configured. Please set a valid RESEND_API_KEY in your .env file.");
+    }
+
+    // In development, use Resend's free sandbox sender to avoid domain verification issues
+    const fromAddress =
+      env.NODE_ENV === "production"
+        ? "LOAVIA <noreply@loavia.in>"
+        : "LOAVIA <onboarding@resend.dev>";
+
     try {
       const response = await this.resend.emails.send({
-        from: "LOAVIA <noreply@loavia.in>",
+        from: fromAddress,
         to,
         subject,
         html,
@@ -112,5 +129,16 @@ export class EmailService {
   ): Promise<void> {
     const html = renderShipmentUpdateEmail(name, receiptNumber, trackingNumber, courierPartner, status);
     await this.sendEmail(email, `LOAVIA Shipment Update - ${receiptNumber}`, html);
+  }
+
+  // Contact Response Email
+  async sendContactResponseEmail(
+    email: string,
+    name: string,
+    originalMessage: string,
+    responseText: string
+  ): Promise<void> {
+    const html = renderContactResponseEmail(name, originalMessage, responseText);
+    await this.sendEmail(email, "Response to your LOAVIA Inquiry", html);
   }
 }

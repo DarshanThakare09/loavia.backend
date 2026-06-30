@@ -3,6 +3,7 @@ import { AdminService } from "../services/admin.service";
 import { sendSuccess } from "../utils/apiResponse";
 import { asyncHandler } from "../utils/asyncHandler";
 import { UserRole, ReviewStatus } from "@prisma/client";
+import { BadRequestError } from "../errors/BadRequestError";
 
 const adminService = new AdminService();
 
@@ -160,4 +161,26 @@ export const listAuditLogs = asyncHandler(async (req: Request, res: Response) =>
 
   const result = await adminService.listAuditLogs(skip, limit, filters);
   return sendSuccess(res, result, "Audit logs list retrieved successfully");
+});
+
+// --- Contact Messages ---
+
+export const listContactMessages = asyncHandler(async (req: Request, res: Response) => {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 50));
+  const skip = (page - 1) * limit;
+
+  const result = await adminService.listContactMessages(skip, limit);
+  return sendSuccess(res, result, "Contact messages list retrieved successfully");
+});
+
+export const respondContactMessage = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { responseText } = req.body;
+  if (!responseText || !responseText.trim()) {
+    throw new BadRequestError("Response text cannot be empty");
+  }
+
+  const result = await adminService.respondContactMessage(id, responseText.trim());
+  return sendSuccess(res, result, "Response sent successfully");
 });

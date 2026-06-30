@@ -26,6 +26,7 @@ import adminPaymentRouter from "./routes/adminPayment.routes";
 import adminEmailRouter from "./routes/adminEmail.routes";
 import adminRouter from "./routes/admin.routes";
 import reviewRouter from "./routes/review.routes";
+import contactRouter from "./routes/contact.routes";
 
 const app = express();
 
@@ -84,6 +85,7 @@ app.use("/api/v1/admin", adminCatalogRouter);
 app.use("/api/v1/admin", adminRouter);
 app.use("/api/v1", publicCatalogRouter);
 app.use("/api/v1", reviewRouter); // Public review submission
+app.use("/api/v1", contactRouter);
 
 // Health Check Endpoints
 app.get("/api/v1/health/live", (_req, res) => {

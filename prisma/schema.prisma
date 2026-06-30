@@ -89,6 +89,7 @@ model User {
   sessions           Session[]
   auditLogs          AuditLog[]
   verificationTokens VerificationToken[]
+  contactMessages    ContactMessage[]
 
   @@map("users")
 }
@@ -508,4 +509,21 @@ model Collection {
   products Product[]
 
   @@map("collections")
+}
+
+model ContactMessage {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String    @db.VarChar(100)
+  email         String    @db.VarChar(255)
+  subject       String    @db.VarChar(255)
+  message       String    @db.Text
+  userId        String?   @map("user_id") @db.Uuid
+  user          User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  responseText  String?   @map("response_text") @db.Text
+  respondedAt   DateTime? @map("responded_at")
+  isResponded   Boolean   @default(false) @map("is_responded")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("contact_messages")
 }
