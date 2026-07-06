@@ -1,0 +1,42 @@
+import { z } from "zod";
+
+export const updateSettingsSchema = z.object({
+  announcementText: z.string().max(1000).optional(),
+  heroTitle: z.string().max(500).optional(),
+  heroSubtitle: z.string().max(1000).optional(),
+  bestSellersTitle: z.string().max(500).optional(),
+  bestSellersSubtitle: z.string().max(1000).optional(),
+  featuredProductsTitle: z.string().max(500).optional(),
+  featuredProductsSubtitle: z.string().max(1000).optional(),
+  featuredProductsCtaText: z.string().max(100).optional(),
+  whyChooseTitle: z.string().max(500).optional(),
+  whyChooseDescription: z.string().max(2000).optional(),
+  whyChooseFeatures: z.string().optional(), // Expected as JSON string of array
+  giftingTitle: z.string().max(500).optional(),
+  giftingDescription: z.string().max(2000).optional(),
+  aboutStoryTitle: z.string().max(500).optional(),
+  aboutStorySubtitle: z.string().max(1000).optional(),
+  aboutFounderName: z.string().max(200).optional(),
+  aboutFounderText: z.string().optional(),
+  aboutMeaningTitle: z.string().max(500).optional(),
+  aboutMeaningSubtitle: z.string().max(1000).optional(),
+  aboutMeaningText1: z.string().optional(),
+  aboutMeaningText2: z.string().optional(),
+  aboutMeaningText3: z.string().optional(),
+  aboutNashikRootsTitle: z.string().max(500).optional(),
+  aboutNashikRootsText1: z.string().optional(),
+  aboutNashikRootsText2: z.string().optional(),
+  aboutStat1Number: z.string().max(50).optional(),
+  aboutStat1Title: z.string().max(200).optional(),
+  aboutStat1Desc: z.string().max(500).optional(),
+  aboutStat2Number: z.string().max(50).optional(),
+  aboutStat2Title: z.string().max(200).optional(),
+  aboutStat2Desc: z.string().max(500).optional(),
+  aboutStat3Number: z.string().max(50).optional(),
+  aboutStat3Title: z.string().max(200).optional(),
+  aboutStat3Desc: z.string().max(500).optional(),
+  shopByMoodTitle: z.string().max(500).optional(),
+  shopByMoodSubtitle: z.string().max(1000).optional(),
+  shopByMoodList: z.string().optional(), // Expected as JSON string of moods
+  categoriesList: z.string().optional(), // Expected as JSON string of categories
+}).strict();

@@ -92,7 +92,10 @@ export const createProductSchema = z.object({
   images: z.array(createProductImageSchema).optional(),
   variants: z.array(createVariantSchema).min(1, "At least one product variant is required"),
   tagIds: z.array(z.string().uuid()).optional(),
+  tags: z.array(z.string()).optional(),
   collectionIds: z.array(z.string().uuid()).optional(),
+  price: z.number().optional(),
+  discountPrice: z.number().optional().nullable(),
 }).strict();
 
 export const updateProductSchema = createProductSchema.partial().omit({ variants: true }).extend({

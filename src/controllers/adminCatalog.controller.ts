@@ -80,7 +80,12 @@ export class AdminCatalogController {
     };
 
     const result = await productService.getProducts(filters, page, limit);
-    sendSuccess(res, result.data, "Products retrieved successfully", 200);
+    res.status(200).json({
+      success: true,
+      message: "Products retrieved successfully",
+      data: result.data,
+      meta: result.pagination,
+    });
   });
 
   // --- Collection Handlers ---

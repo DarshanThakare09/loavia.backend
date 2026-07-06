@@ -1,5 +1,5 @@
 import { prisma } from "../config/prisma";
-import { Product, Prisma, ProductStatus } from "@prisma/client";
+import { Product, Prisma } from "@prisma/client";
 import { ProductFilterInput } from "../types/catalog.types";
 
 export class ProductRepository {
@@ -86,9 +86,6 @@ export class ProductRepository {
     // Status filtering
     if (filters.status) {
       where.status = filters.status;
-    } else {
-      // Default to PUBLISHED for safety in listings
-      where.status = ProductStatus.PUBLISHED;
     }
 
     // Badge Filters

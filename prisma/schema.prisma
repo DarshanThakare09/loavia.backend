@@ -527,3 +527,12 @@ model ContactMessage {
 
   @@map("contact_messages")
 }
+
+model Setting {
+  key       String   @id @db.VarChar(100)
+  value     String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}

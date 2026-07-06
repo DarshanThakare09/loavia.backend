@@ -51,6 +51,7 @@ export class ProductService {
         displayLabel?: string | null;
       }>;
       tagIds?: string[];
+      tags?: string[];
       collectionIds?: string[];
     },
     actorId: string,
@@ -102,6 +103,41 @@ export class ProductService {
         }
       }
 
+      // Resolve/Create tags from data.tags (array of strings) if provided
+      let tagIdsToConnect = data.tagIds || [];
+      if (data.tags && data.tags.length > 0) {
+        for (const tagName of data.tags) {
+          const tagSlug = tagName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+          const tag = await tx.tag.upsert({
+            where: { slug: tagSlug },
+            update: {},
+            create: { name: tagName, slug: tagSlug },
+          });
+          if (!tagIdsToConnect.includes(tag.id)) {
+            tagIdsToConnect.push(tag.id);
+          }
+        }
+      }
+
+      // Auto-connect to featured-products or best-sellers collections if respective flags are true
+      let collectionIdsToConnect = data.collectionIds || [];
+      if (data.isFeatured) {
+        const featuredColl = await tx.collection.findFirst({
+          where: { slug: "featured-products", isActive: true },
+        });
+        if (featuredColl && !collectionIdsToConnect.includes(featuredColl.id)) {
+          collectionIdsToConnect.push(featuredColl.id);
+        }
+      }
+      if (data.isBestSeller) {
+        const bestSellerColl = await tx.collection.findFirst({
+          where: { slug: "best-sellers", isActive: true },
+        });
+        if (bestSellerColl && !collectionIdsToConnect.includes(bestSellerColl.id)) {
+          collectionIdsToConnect.push(bestSellerColl.id);
+        }
+      }
+
       // 4. Create base Product
       const product = await tx.product.create({
         data: {
@@ -126,8 +162,8 @@ export class ProductService {
           metaDescription: data.metaDescription,
           ogImage: data.ogImage,
           canonicalUrl: data.canonicalUrl,
-          tags: data.tagIds ? { connect: data.tagIds.map((id) => ({ id })) } : undefined,
-          collections: data.collectionIds ? { connect: data.collectionIds.map((id) => ({ id })) } : undefined,
+          tags: tagIdsToConnect.length > 0 ? { connect: tagIdsToConnect.map((id) => ({ id })) } : undefined,
+          collections: collectionIdsToConnect.length > 0 ? { connect: collectionIdsToConnect.map((id) => ({ id })) } : undefined,
         },
       });
 
@@ -195,7 +231,23 @@ export class ProductService {
         },
       });
 
-      return product;
+      // Fetch fully populated product with relations
+      const populated = await tx.product.findFirst({
+        where: { id: product.id, isDeleted: false },
+        include: {
+          category: true,
+          images: {
+            orderBy: { sortOrder: "asc" },
+          },
+          variants: {
+            where: { isDeleted: false },
+            orderBy: { price: "asc" },
+          },
+          tags: true,
+          collections: true,
+        },
+      });
+      return populated as unknown as Product;
     });
   }
 
@@ -240,6 +292,7 @@ export class ProductService {
         displayLabel?: string | null;
       }>;
       tagIds?: string[];
+      tags?: string[];
       collectionIds?: string[];
     },
     actorId: string,
@@ -414,6 +467,61 @@ export class ProductService {
         }
       }
 
+      // Resolve/Create tags from data.tags (array of strings) if provided
+      let tagIdsToConnect = data.tagIds;
+      if (data.tags) {
+        const resolvedTagIds: string[] = [];
+        for (const tagName of data.tags) {
+          const tagSlug = tagName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+          const tag = await tx.tag.upsert({
+            where: { slug: tagSlug },
+            update: {},
+            create: { name: tagName, slug: tagSlug },
+          });
+          resolvedTagIds.push(tag.id);
+        }
+        tagIdsToConnect = resolvedTagIds;
+      }
+
+      // Auto-connect/disconnect featured-products and best-sellers collections if respective flags are provided/changed
+      let collectionIdsToConnect = data.collectionIds;
+      const isFeaturedParam = data.isFeatured !== undefined ? data.isFeatured : existing.isFeatured;
+      const isBestSellerParam = data.isBestSeller !== undefined ? data.isBestSeller : existing.isBestSeller;
+
+      if (isFeaturedParam !== undefined || isBestSellerParam !== undefined) {
+        const currentCollConnections = await tx.collection.findMany({
+          where: { products: { some: { id } } },
+        });
+        let cids = currentCollConnections.map(c => c.id);
+
+        if (isFeaturedParam !== undefined) {
+          const featuredColl = await tx.collection.findFirst({
+            where: { slug: "featured-products", isActive: true },
+          });
+          if (featuredColl) {
+            if (isFeaturedParam && !cids.includes(featuredColl.id)) {
+              cids.push(featuredColl.id);
+            } else if (!isFeaturedParam && cids.includes(featuredColl.id)) {
+              cids = cids.filter(cid => cid !== featuredColl.id);
+            }
+          }
+        }
+
+        if (isBestSellerParam !== undefined) {
+          const bestSellerColl = await tx.collection.findFirst({
+            where: { slug: "best-sellers", isActive: true },
+          });
+          if (bestSellerColl) {
+            if (isBestSellerParam && !cids.includes(bestSellerColl.id)) {
+              cids.push(bestSellerColl.id);
+            } else if (!isBestSellerParam && cids.includes(bestSellerColl.id)) {
+              cids = cids.filter(cid => cid !== bestSellerColl.id);
+            }
+          }
+        }
+        collectionIdsToConnect = cids;
+      }
+
       // 6. Update core fields and relations
       const product = await tx.product.update({
         where: { id },
@@ -439,11 +547,11 @@ export class ProductService {
           ogImage: data.ogImage,
           canonicalUrl: data.canonicalUrl,
           category: data.categoryId ? { connect: { id: data.categoryId } } : undefined,
-          tags: data.tagIds ? {
-            set: data.tagIds.map((tid) => ({ id: tid })),
+          tags: tagIdsToConnect ? {
+            set: tagIdsToConnect.map((tid) => ({ id: tid })),
           } : undefined,
-          collections: data.collectionIds ? {
-            set: data.collectionIds.map((cid) => ({ id: cid })),
+          collections: collectionIdsToConnect ? {
+            set: collectionIdsToConnect.map((cid) => ({ id: cid })),
           } : undefined,
         },
       });
@@ -461,7 +569,23 @@ export class ProductService {
         },
       });
 
-      return product;
+      // Fetch fully populated product with relations
+      const populated = await tx.product.findFirst({
+        where: { id: product.id, isDeleted: false },
+        include: {
+          category: true,
+          images: {
+            orderBy: { sortOrder: "asc" },
+          },
+          variants: {
+            where: { isDeleted: false },
+            orderBy: { price: "asc" },
+          },
+          tags: true,
+          collections: true,
+        },
+      });
+      return populated as unknown as Product;
     });
   }
 
