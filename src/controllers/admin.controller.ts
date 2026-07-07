@@ -4,8 +4,36 @@ import { sendSuccess } from "../utils/apiResponse";
 import { asyncHandler } from "../utils/asyncHandler";
 import { UserRole, ReviewStatus } from "@prisma/client";
 import { BadRequestError } from "../errors/BadRequestError";
+import { UserRepository } from "../repositories/user.repository";
+import { hashPassword, comparePassword } from "../utils/crypto";
+import { updateProfileSchema, changePasswordSchema } from "../validators/auth.validator";
 
 const adminService = new AdminService();
+const userRepository = new UserRepository();
+
+// --- Admin Self Profile ---
+
+export const updateAdminProfile = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user?.id) throw new BadRequestError("Unauthorized");
+  const validatedBody = updateProfileSchema.parse(req.body);
+  const updated = await userRepository.update(req.user.id, validatedBody);
+  const { passwordHash, ...safe } = updated;
+  sendSuccess(res, safe, "Admin profile updated");
+});
+
+export const changeAdminPassword = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user?.id) throw new BadRequestError("Unauthorized");
+  const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
+  const user = await userRepository.findById(req.user.id);
+  if (!user) throw new BadRequestError("User not found");
+  const isValid = user.passwordHash
+    ? await comparePassword(currentPassword, user.passwordHash)
+    : false;
+  if (!isValid) throw new BadRequestError("Current password is incorrect");
+  const newHash = await hashPassword(newPassword);
+  await userRepository.update(req.user.id, { passwordHash: newHash });
+  sendSuccess(res, null, "Password changed successfully");
+});
 
 // --- Dashboard & Analytics ---
 

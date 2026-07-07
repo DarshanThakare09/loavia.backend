@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { AppError } from "../errors/AppError";
 import { ValidationError } from "../errors/ValidationError";
+import { ZodError } from "zod";
 import { logger } from "../config/logger";
 import { env } from "../config/env";
 
@@ -14,7 +15,15 @@ export const errorHandler = (
   let message = "Internal Server Error";
   let errors: any[] | undefined = undefined;
 
-  if (err instanceof AppError) {
+  if (err instanceof ZodError) {
+    statusCode = 422;
+    message = err.errors[0]?.message || "Validation Failed";
+    errors = err.errors.map((e) => ({
+      field: e.path.join("."),
+      message: e.message,
+    }));
+    logger.warn(`Validation Error [Request ID: ${req.id}]: ${message}`);
+  } else if (err instanceof AppError) {
     statusCode = err.statusCode;
     message = err.message;
     

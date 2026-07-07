@@ -17,6 +17,18 @@ const router = Router();
 // Globally require authentication for all routes
 router.use(authenticate);
 
+// --- Admin Self Profile ---
+router.put(
+  "/me/profile",
+  requireRole([UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN]),
+  controller.updateAdminProfile
+);
+router.post(
+  "/me/change-password",
+  requireRole([UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN]),
+  controller.changeAdminPassword
+);
+
 // --- Dashboard & Analytics (Staff, Admin, Super Admin) ---
 router.get(
   "/dashboard/summary",

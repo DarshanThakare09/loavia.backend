@@ -187,6 +187,59 @@ export class SettingsService {
       }
     }
 
+    if (data.categoriesList) {
+      try {
+        const cats = JSON.parse(data.categoriesList);
+        if (Array.isArray(cats)) {
+          const incomingSlugs: string[] = [];
+          for (const c of cats) {
+            if (!c.name || !c.name.trim()) continue;
+            const slug = c.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
+            incomingSlugs.push(slug);
+            
+            const dbCat = await prisma.category.findFirst({
+              where: { slug }
+            });
+            
+            if (dbCat) {
+              await prisma.category.update({
+                where: { id: dbCat.id },
+                data: {
+                  name: c.name.trim(),
+                  image: c.image || null,
+                  isDeleted: false,
+                  deletedAt: null,
+                  isActive: true
+                }
+              });
+            } else {
+              await prisma.category.create({
+                data: {
+                  name: c.name.trim(),
+                  slug,
+                  image: c.image || null,
+                  isActive: true
+                }
+              });
+            }
+          }
+          
+          await prisma.category.updateMany({
+            where: {
+              slug: { notIn: incomingSlugs },
+              isDeleted: false
+            },
+            data: {
+              isDeleted: true,
+              deletedAt: new Date()
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Error synchronizing Category table:", err);
+      }
+    }
+
     return this.getSettings();
   }
 }

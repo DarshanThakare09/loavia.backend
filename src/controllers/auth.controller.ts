@@ -8,7 +8,11 @@ import {
   verifyEmailSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  updateProfileSchema,
+  changePasswordSchema,
 } from "../validators/auth.validator";
+import { hashPassword, comparePassword } from "../utils/crypto";
+import { BadRequestError } from "../errors/BadRequestError";
 import { asyncHandler } from "../utils/asyncHandler";
 
 import { UserRepository } from "../repositories/user.repository";
@@ -48,6 +52,23 @@ export class AuthController {
     res.cookie("refresh_token", refreshToken, COOKIE_OPTIONS_REFRESH);
 
     sendSuccess(res, { user }, "Login successful");
+  });
+
+  // Admin-specific login — sets admin_access_token cookie, does NOT touch access_token
+  // This ensures customer storefront sessions are never affected by admin logins.
+  adminLogin = asyncHandler(async (req: Request, res: Response) => {
+    const validatedBody = loginSchema.parse(req.body);
+    const { accessToken, user } = await authService.login(validatedBody, req.ipAddress);
+
+    const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN", "STAFF"];
+    if (!ADMIN_ROLES.includes(user.role)) {
+      throw new BadRequestError("Access denied. You do not have admin privileges.");
+    }
+
+    // Only set the admin-scoped cookie (not access_token)
+    res.cookie("admin_access_token", accessToken, COOKIE_OPTIONS_ACCESS);
+
+    sendSuccess(res, { user }, "Admin login successful");
   });
 
   logout = asyncHandler(async (req: Request, res: Response) => {
@@ -110,6 +131,39 @@ export class AuthController {
     }
     const { passwordHash, ...userWithoutPassword } = user;
     sendSuccess(res, userWithoutPassword, "User profile retrieved successfully");
+  });
+
+  updateProfile = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user?.id) {
+      sendSuccess(res, null, "Unauthorized", 401);
+      return;
+    }
+    const validatedBody = updateProfileSchema.parse(req.body);
+    const updated = await userRepository.update(req.user.id, validatedBody);
+    const { passwordHash, ...userWithoutPassword } = updated;
+    sendSuccess(res, userWithoutPassword, "Profile updated successfully");
+  });
+
+  changePassword = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user?.id) {
+      sendSuccess(res, null, "Unauthorized", 401);
+      return;
+    }
+    const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
+    const user = await userRepository.findById(req.user.id);
+    if (!user) {
+      sendSuccess(res, null, "User not found", 404);
+      return;
+    }
+    const isValid = user.passwordHash
+      ? await comparePassword(currentPassword, user.passwordHash)
+      : false;
+    if (!isValid) {
+      throw new BadRequestError("Current password is incorrect");
+    }
+    const newHash = await hashPassword(newPassword);
+    await userRepository.update(req.user.id, { passwordHash: newHash });
+    sendSuccess(res, null, "Password changed successfully");
   });
 
   adminOnly = asyncHandler(async (_req: Request, res: Response) => {

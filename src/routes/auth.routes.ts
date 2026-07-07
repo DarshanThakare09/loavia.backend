@@ -12,6 +12,7 @@ const controller = new AuthController();
 // Rate-limited Auth routes
 router.post("/register", authLimiter, controller.register);
 router.post("/login", authLimiter, controller.login);
+router.post("/admin-login", authLimiter, controller.adminLogin);
 router.post("/forgot-password", authLimiter, controller.forgotPassword);
 router.post("/reset-password", authLimiter, controller.resetPassword);
 
@@ -22,6 +23,8 @@ router.get("/verify-email", controller.verifyEmail);
 
 // Verification and RBAC test routes
 router.get("/me", authenticate, controller.getMe);
+router.put("/profile", authenticate, controller.updateProfile);
+router.post("/change-password", authenticate, controller.changePassword);
 router.get("/admin-only", authenticate, requireRole([UserRole.ADMIN, UserRole.SUPER_ADMIN]), controller.adminOnly);
 
 export default router;
