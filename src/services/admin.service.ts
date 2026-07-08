@@ -599,6 +599,16 @@ export class AdminService {
       }),
       prisma.contactMessage.count(),
     ]);
+
+    // Mark all fetched messages as read
+    const unreadIds = messages.filter((m: any) => !m.isRead).map((m: any) => m.id);
+    if (unreadIds.length > 0) {
+      await prisma.contactMessage.updateMany({
+        where: { id: { in: unreadIds } },
+        data: { isRead: true },
+      });
+    }
+
     return { data: messages, total };
   }
 

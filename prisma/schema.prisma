@@ -515,8 +515,11 @@ model ContactMessage {
   id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name          String    @db.VarChar(100)
   email         String    @db.VarChar(255)
+  phone         String?   @db.VarChar(20)
   subject       String    @db.VarChar(255)
   message       String    @db.Text
+  enquiryType   String    @default("GENERAL") @map("enquiry_type") @db.VarChar(50)
+  isRead        Boolean   @default(false) @map("is_read")
   userId        String?   @map("user_id") @db.Uuid
   user          User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
   responseText  String?   @map("response_text") @db.Text
