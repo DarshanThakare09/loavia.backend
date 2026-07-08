@@ -71,6 +71,9 @@ export class EmailService {
   async sendVerificationEmail(email: string, name: string, token: string): Promise<void> {
     const link = `${env.FRONTEND_URL}/verify-email?token=${token}`;
     const html = renderVerificationEmail(name, link);
+    if (env.RESEND_API_KEY === "mock" || env.NODE_ENV !== "production") {
+      logger.info(`🔗 [Verification Link] ${link}`);
+    }
     await this.sendEmail(email, "Verify Your LOAVIA Account", html);
   }
 
@@ -84,6 +87,9 @@ export class EmailService {
   async sendPasswordResetEmail(email: string, name: string, token: string): Promise<void> {
     const link = `${env.FRONTEND_URL}/reset-password?token=${token}`;
     const html = renderPasswordResetEmail(name, link);
+    if (env.RESEND_API_KEY === "mock" || env.NODE_ENV !== "production") {
+      logger.info(`🔗 [Password Reset Link] ${link}`);
+    }
     await this.sendEmail(email, "Reset Your LOAVIA Password", html);
   }
 
