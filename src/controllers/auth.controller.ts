@@ -36,6 +36,9 @@ const COOKIE_OPTIONS_REFRESH = {
   path: "/api/v1/auth", // Restricted to auth routes (refresh/logout)
 };
 
+import { prisma } from "../config/prisma";
+import { UserRole } from "@prisma/client";
+
 export class AuthController {
   register = asyncHandler(async (req: Request, res: Response) => {
     const validatedBody = registerSchema.parse(req.body);
@@ -57,13 +60,27 @@ export class AuthController {
   // Admin-specific login — sets admin_access_token cookie, does NOT touch access_token
   // This ensures customer storefront sessions are never affected by admin logins.
   adminLogin = asyncHandler(async (req: Request, res: Response) => {
-    const validatedBody = loginSchema.parse(req.body);
-    const { accessToken, user } = await authService.login(validatedBody, req.ipAddress);
+    const { email, password } = loginSchema.parse(req.body);
 
-    const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN", "STAFF"];
-    if (!ADMIN_ROLES.includes(user.role)) {
-      throw new BadRequestError("Access denied. You do not have admin privileges.");
+    // Retrieve the single seeded admin in the database
+    const admin = await prisma.user.findFirst({
+      where: {
+        role: { in: [UserRole.ADMIN, UserRole.SUPER_ADMIN] }
+      }
+    });
+
+    // Enforce that only the single admin account is validated
+    if (!admin || admin.email.toLowerCase().trim() !== email.toLowerCase().trim() || !admin.passwordHash) {
+      throw new BadRequestError("Invalid credentials");
     }
+
+    const isPasswordValid = await comparePassword(password, admin.passwordHash);
+    if (!isPasswordValid) {
+      throw new BadRequestError("Invalid credentials");
+    }
+
+    // Call service to perform normal login setup (session, JWT, audit log)
+    const { accessToken, user } = await authService.login({ email, password }, req.ipAddress);
 
     // Only set the admin-scoped cookie (not access_token)
     res.cookie("admin_access_token", accessToken, COOKIE_OPTIONS_ACCESS);

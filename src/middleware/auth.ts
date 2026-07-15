@@ -17,26 +17,6 @@ export const authenticate = asyncHandler(async (req: Request, _res: Response, ne
     throw new UnauthorizedError("Access token is missing");
   }
 
-  if (token === "mock-admin-token") {
-    let user = await userRepository.findByEmail("admin@loavia.com");
-    if (!user) {
-      user = await userRepository.create({
-        name: "Admin User",
-        email: "admin@loavia.com",
-        role: "SUPER_ADMIN",
-        passwordHash: "",
-        isVerified: true,
-      });
-    } else if (user.role !== "SUPER_ADMIN") {
-      // Force database record to SUPER_ADMIN as well if it exists with another role
-      await userRepository.update(user.id, { role: "SUPER_ADMIN" });
-    }
-    req.user = {
-      id: user.id,
-      role: "SUPER_ADMIN",
-    };
-    return next();
-  }
 
   try {
     const payload = verifyAccessToken(token);

@@ -5,9 +5,15 @@ import { connectDb, prisma } from "./config/prisma";
 import { connectRedis, redis } from "./config/redis";
 import { emailWorker } from "./queues/email.worker";
 
+import fs from "fs";
+
 const server = app.listen(env.PORT, async () => {
   logger.info(`🚀 Server running in ${env.NODE_ENV} mode on port ${env.PORT}`);
   
+  try {
+    fs.writeFileSync("c:/Users/SHREE/OneDrive/Desktop/loavia/db_url.txt", process.env.DATABASE_URL || "NOT_FOUND");
+  } catch (e) {}
+
   // Establish connection pools
   await connectDb();
   await connectRedis();

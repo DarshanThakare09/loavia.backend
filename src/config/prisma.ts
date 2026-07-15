@@ -27,10 +27,13 @@ prisma.$on("error", (e: Prisma.LogEvent) => {
   logger.error(`Prisma Error: ${e.message}`);
 });
 
+import { seedAdminUser } from "../utils/adminSeeder";
+
 export const connectDb = async () => {
   try {
     await prisma.$connect();
     logger.info("⚡ Database connected successfully");
+    await seedAdminUser();
   } catch (error) {
     logger.error("❌ Database connection failed:", error);
     process.exit(1);
