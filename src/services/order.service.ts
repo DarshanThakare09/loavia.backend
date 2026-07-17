@@ -71,8 +71,14 @@ export class OrderService {
     // 18% GST calculation on net taxable amount
     const taxAmount = Math.floor(netTaxable * 0.18);
 
-    // Free shipping if net taxable subtotal > ₹999 (99900 Paise), else flat ₹100 (10000 Paise)
-    const shippingFee = netTaxable > 99900 ? 0 : 10000;
+    // Retrieve shipping settings from DB (stored in Paise)
+    const dbShippingCharge = await prisma.setting.findUnique({ where: { key: "shipping_charge" } });
+    const dbFreeShippingThreshold = await prisma.setting.findUnique({ where: { key: "free_shipping_threshold" } });
+
+    const shippingCharge = dbShippingCharge ? Number(dbShippingCharge.value) : 10000; // default ₹100 (10000 Paise)
+    const freeShippingThreshold = dbFreeShippingThreshold ? Number(dbFreeShippingThreshold.value) : 99900; // default ₹999 (99900 Paise)
+
+    const shippingFee = netTaxable > freeShippingThreshold ? 0 : shippingCharge;
 
     const totalAmount = netTaxable + taxAmount + shippingFee;
 

@@ -80,6 +80,9 @@ export interface HomepageSettings {
   shopByMoodSubtitle: string;
   shopByMoodList: string;
   categoriesList: string;
+  shippingCharge?: number;
+  freeShippingThreshold?: number;
+  currency?: string;
 }
 
 // Maps typescript camelCase keys to database snake_case keys
@@ -122,6 +125,9 @@ const KEY_MAPPING: Record<keyof HomepageSettings, string> = {
   shopByMoodSubtitle: "shop_by_mood_subtitle",
   shopByMoodList: "shop_by_mood_list",
   categoriesList: "categories_list",
+  shippingCharge: "shipping_charge",
+  freeShippingThreshold: "free_shipping_threshold",
+  currency: "currency",
 };
 
 export class SettingsService {
@@ -172,6 +178,9 @@ export class SettingsService {
       shopByMoodSubtitle: settingsMap[KEY_MAPPING.shopByMoodSubtitle] ?? "Whether you need a mid-day energy boost or a decadent midnight snack, we have a cookie crafted just for how you feel.",
       shopByMoodList: settingsMap[KEY_MAPPING.shopByMoodList] ?? DEFAULT_SHOP_BY_MOOD_LIST,
       categoriesList: settingsMap[KEY_MAPPING.categoriesList] ?? DEFAULT_CATEGORIES_LIST,
+      shippingCharge: Number(settingsMap[KEY_MAPPING.shippingCharge] ?? 10000) / 100,
+      freeShippingThreshold: Number(settingsMap[KEY_MAPPING.freeShippingThreshold] ?? 99900) / 100,
+      currency: settingsMap[KEY_MAPPING.currency] ?? "INR",
     };
   }
 
@@ -179,10 +188,14 @@ export class SettingsService {
     for (const [key, value] of Object.entries(data)) {
       const dbKey = KEY_MAPPING[key as keyof HomepageSettings];
       if (dbKey && value !== undefined && value !== null) {
+        let valStr = value.toString();
+        if (key === "shippingCharge" || key === "freeShippingThreshold") {
+          valStr = Math.round(Number(value) * 100).toString();
+        }
         await prisma.setting.upsert({
           where: { key: dbKey },
-          update: { value: value.toString() },
-          create: { key: dbKey, value: value.toString() },
+          update: { value: valStr },
+          create: { key: dbKey, value: valStr },
         });
       }
     }

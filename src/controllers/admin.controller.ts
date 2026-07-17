@@ -13,6 +13,14 @@ const userRepository = new UserRepository();
 
 // --- Admin Self Profile ---
 
+export const getAdminProfile = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user?.id) throw new BadRequestError("Unauthorized");
+  const user = await userRepository.findById(req.user.id);
+  if (!user) throw new BadRequestError("User not found");
+  const { passwordHash, ...safe } = user;
+  sendSuccess(res, safe, "Admin profile retrieved");
+});
+
 export const updateAdminProfile = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user?.id) throw new BadRequestError("Unauthorized");
   const validatedBody = updateProfileSchema.parse(req.body);

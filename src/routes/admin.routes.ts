@@ -18,6 +18,11 @@ const router = Router();
 router.use(authenticate);
 
 // --- Admin Self Profile ---
+router.get(
+  "/me/profile",
+  requireRole([UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN]),
+  controller.getAdminProfile
+);
 router.put(
   "/me/profile",
   requireRole([UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN]),

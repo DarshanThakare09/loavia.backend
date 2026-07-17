@@ -10,7 +10,7 @@ const userRepository = new UserRepository();
 export const authenticate = asyncHandler(async (req: Request, _res: Response, next: NextFunction) => {
   const isAdminRoute = req.originalUrl.includes("/admin");
   const token = isAdminRoute
-    ? (req.cookies.admin_access_token || req.cookies.access_token)
+    ? req.cookies.admin_access_token
     : req.cookies.access_token;
 
   if (!token) {

@@ -102,6 +102,11 @@ export class AuthController {
     sendSuccess(res, null, "Logout successful");
   });
 
+  adminLogout = asyncHandler(async (_req: Request, res: Response) => {
+    res.clearCookie("admin_access_token", { ...COOKIE_OPTIONS_ACCESS, maxAge: 0 });
+    sendSuccess(res, null, "Admin logout successful");
+  });
+
   refresh = asyncHandler(async (req: Request, res: Response) => {
     const refreshToken = req.cookies.refresh_token;
     

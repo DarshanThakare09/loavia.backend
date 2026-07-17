@@ -18,6 +18,7 @@ router.post("/reset-password", authLimiter, controller.resetPassword);
 
 // Standard Auth routes
 router.post("/logout", controller.logout);
+router.post("/admin-logout", controller.adminLogout);
 router.post("/refresh", controller.refresh);
 router.get("/verify-email", controller.verifyEmail);
 

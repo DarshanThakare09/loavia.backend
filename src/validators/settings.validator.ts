@@ -39,4 +39,7 @@ export const updateSettingsSchema = z.object({
   shopByMoodSubtitle: z.string().max(1000).optional(),
   shopByMoodList: z.string().optional(), // Expected as JSON string of moods
   categoriesList: z.string().optional(), // Expected as JSON string of categories
+  shippingCharge: z.number().nonnegative().optional(),
+  freeShippingThreshold: z.number().nonnegative().optional(),
+  currency: z.string().max(10).optional(),
 }).strict();
