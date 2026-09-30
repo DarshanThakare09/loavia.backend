@@ -12,7 +12,8 @@
     "prisma:migrate": "npx prisma migrate dev",
     "test:concurrency": "npx ts-node src/utils/testConcurrency.ts",
     "test:security": "npx ts-node src/utils/testHardening.ts",
-    "test:all": "npx ts-node src/utils/runAllTests.ts"
+    "test:all": "npx ts-node src/utils/runAllTests.ts",
+    "seed:admin:prod": "npx ts-node -r dotenv/config src/utils/seedProductionAdmin.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.11.0",

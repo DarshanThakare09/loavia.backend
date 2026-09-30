@@ -8,8 +8,7 @@ const passwords = [
   "postgres123", "postgres@123", "Postgres@123", 
   "root123", "root@123", 
   "shree", "shree123", "shree@123", "Shree@123", 
-  "loavia123", "loavia@123", "Loavia@123", 
-  "LoaviaAdmin@2026", "Loavia@2026", "LoaviaAdmin@123"
+  "loavia123", "loavia_pass", "loavia_admin"
 ];
 const dbs = ["loavia_dev", "loavia_db", "postgres"];
 

@@ -1,6 +1,8 @@
+import "dotenv/config";
 import { prisma } from "../config/prisma";
 import { hashPassword } from "./crypto";
 import { UserRole } from "@prisma/client";
+
 
 async function main() {
   console.log("🧹 Starting full database cleanup...");

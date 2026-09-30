@@ -1,5 +1,8 @@
 import winston from "winston";
 import path from "path";
+import fs from "fs";
+
+const isProduction = process.env.NODE_ENV === "production";
 
 const logFormat = winston.format.combine(
   winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
@@ -15,31 +18,40 @@ const devFormat = winston.format.combine(
   })
 );
 
-export const logger = winston.createLogger({
-  level: process.env.NODE_ENV === "production" ? "info" : "debug",
-  format: logFormat,
-  transports: [
-    // Write all logs with importance level of `error` or less to `error.log`
-    new winston.transports.File({
-      filename: path.join(process.cwd(), "logs", "error.log"),
-      level: "error",
-      maxsize: 5242880, // 5MB
-      maxFiles: 5,
-    }),
-    // Write all logs with importance level of `info` or less to `combined.log`
-    new winston.transports.File({
-      filename: path.join(process.cwd(), "logs", "combined.log"),
-      maxsize: 5242880, // 5MB
-      maxFiles: 5,
-    }),
-  ],
-});
+// Always log to stdout — required for cloud platforms (Render, Railway, Fly.io, etc.)
+// that capture stdout/stderr for log aggregation.
+const transports: winston.transport[] = [
+  new winston.transports.Console({
+    format: isProduction ? logFormat : devFormat,
+  }),
+];
 
-// If we're not in production then log to the `console` with colored format
-if (process.env.NODE_ENV !== "production") {
-  logger.add(
-    new winston.transports.Console({
-      format: devFormat,
+// Add file transports only when the logs directory is writable (local / Docker with a volume).
+const logsDir = path.join(process.cwd(), "logs");
+try {
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+  }
+  fs.accessSync(logsDir, fs.constants.W_OK);
+  transports.push(
+    new winston.transports.File({
+      filename: path.join(logsDir, "error.log"),
+      level: "error",
+      maxsize: 5242880,
+      maxFiles: 5,
+    }),
+    new winston.transports.File({
+      filename: path.join(logsDir, "combined.log"),
+      maxsize: 5242880,
+      maxFiles: 5,
     })
   );
+} catch {
+  // Filesystem is read-only (common on cloud platforms). stdout-only logging is fine.
 }
+
+export const logger = winston.createLogger({
+  level: isProduction ? "info" : "debug",
+  format: logFormat,
+  transports,
+});

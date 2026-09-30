@@ -41,8 +41,16 @@ app.use(
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow any origin dynamically for testing across different network hosts/IPs
-      callback(null, origin || true);
+      // In development allow any origin for easy local testing across different hosts.
+      // In production restrict to the configured FRONTEND_URL only.
+      if (env.NODE_ENV !== "production") {
+        return callback(null, origin || true);
+      }
+      const allowed = env.FRONTEND_URL;
+      if (!origin || origin === allowed) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS: origin ${origin} not allowed`));
     },
     credentials: true,
   })

@@ -20,10 +20,14 @@ import { UserRepository } from "../repositories/user.repository";
 const authService = new AuthService();
 const userRepository = new UserRepository();
 
+// SameSite=lax allows cookies to be sent on cross-origin XHR/fetch requests
+// (withCredentials: true) which is required when the frontend (port 3000) calls
+// the API (port 5000). SameSite=strict would silently block all cookies on
+// cross-origin requests, causing 401s on every authenticated API call.
 const COOKIE_OPTIONS_ACCESS = {
   httpOnly: true,
   secure: env.NODE_ENV === "production",
-  sameSite: "strict" as const,
+  sameSite: "lax" as const,
   maxAge: 15 * 60 * 1000, // 15 minutes
   path: "/",
 };
@@ -31,7 +35,7 @@ const COOKIE_OPTIONS_ACCESS = {
 const COOKIE_OPTIONS_REFRESH = {
   httpOnly: true,
   secure: env.NODE_ENV === "production",
-  sameSite: "strict" as const,
+  sameSite: "lax" as const,
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   path: "/api/v1/auth", // Restricted to auth routes (refresh/logout)
 };
@@ -62,15 +66,16 @@ export class AuthController {
   adminLogin = asyncHandler(async (req: Request, res: Response) => {
     const { email, password } = loginSchema.parse(req.body);
 
-    // Retrieve the single seeded admin in the database
+    // Retrieve the admin user matching the submitted email
     const admin = await prisma.user.findFirst({
       where: {
-        role: { in: [UserRole.ADMIN, UserRole.SUPER_ADMIN] }
-      }
+        email: email.toLowerCase().trim(),
+        role: { in: [UserRole.ADMIN, UserRole.SUPER_ADMIN] },
+      },
     });
 
-    // Enforce that only the single admin account is validated
-    if (!admin || admin.email.toLowerCase().trim() !== email.toLowerCase().trim() || !admin.passwordHash) {
+    // Enforce that only a valid admin account is authenticated
+    if (!admin || !admin.passwordHash) {
       throw new BadRequestError("Invalid credentials");
     }
 
