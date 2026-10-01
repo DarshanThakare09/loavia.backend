@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+*.log
+logs/
+.DS_Store
+pgdata/
+redis-7.2.4/
+redis-7.2.4.tar.gz
+*.dmg
+.git
