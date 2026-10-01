@@ -20,22 +20,25 @@ import { UserRepository } from "../repositories/user.repository";
 const authService = new AuthService();
 const userRepository = new UserRepository();
 
-// SameSite=lax allows cookies to be sent on cross-origin XHR/fetch requests
-// (withCredentials: true) which is required when the frontend (port 3000) calls
-// the API (port 5000). SameSite=strict would silently block all cookies on
-// cross-origin requests, causing 401s on every authenticated API call.
+// In production the frontend (www.loavia.in) and backend (*.onrender.com) are on
+// different domains — this is a CROSS-ORIGIN setup. Browsers block SameSite=lax
+// cookies on cross-origin fetch/XHR requests entirely, so the token is never sent.
+// SameSite=none requires Secure=true (HTTPS only).
+// In development, SameSite=lax is fine since both run on localhost.
+const IS_PROD = env.NODE_ENV === "production";
+
 const COOKIE_OPTIONS_ACCESS = {
   httpOnly: true,
-  secure: env.NODE_ENV === "production",
-  sameSite: "lax" as const,
+  secure: IS_PROD,
+  sameSite: (IS_PROD ? "none" : "lax") as "none" | "lax",
   maxAge: 15 * 60 * 1000, // 15 minutes
   path: "/",
 };
 
 const COOKIE_OPTIONS_REFRESH = {
   httpOnly: true,
-  secure: env.NODE_ENV === "production",
-  sameSite: "lax" as const,
+  secure: IS_PROD,
+  sameSite: (IS_PROD ? "none" : "lax") as "none" | "lax",
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   path: "/api/v1/auth", // Restricted to auth routes (refresh/logout)
 };
@@ -61,8 +64,8 @@ export class AuthController {
     sendSuccess(res, { user }, "Login successful");
   });
 
-  // Admin-specific login — sets admin_access_token cookie, does NOT touch access_token
-  // This ensures customer storefront sessions are never affected by admin logins.
+  // Admin-specific login — sets admin_access_token + admin_refresh_token cookies.
+  // Does NOT touch access_token or refresh_token so customer sessions are unaffected.
   adminLogin = asyncHandler(async (req: Request, res: Response) => {
     const { email, password } = loginSchema.parse(req.body);
 
@@ -85,10 +88,14 @@ export class AuthController {
     }
 
     // Call service to perform normal login setup (session, JWT, audit log)
-    const { accessToken, user } = await authService.login({ email, password }, req.ipAddress);
+    const { accessToken, refreshToken, user } = await authService.login({ email, password }, req.ipAddress);
 
-    // Only set the admin-scoped cookie (not access_token)
+    // Set admin-scoped cookies only — never touch access_token/refresh_token
     res.cookie("admin_access_token", accessToken, COOKIE_OPTIONS_ACCESS);
+    res.cookie("admin_refresh_token", refreshToken, {
+      ...COOKIE_OPTIONS_REFRESH,
+      path: "/api/v1/auth", // scoped to auth routes only
+    });
 
     sendSuccess(res, { user }, "Admin login successful");
   });
@@ -109,7 +116,32 @@ export class AuthController {
 
   adminLogout = asyncHandler(async (_req: Request, res: Response) => {
     res.clearCookie("admin_access_token", { ...COOKIE_OPTIONS_ACCESS, maxAge: 0 });
+    res.clearCookie("admin_refresh_token", {
+      ...COOKIE_OPTIONS_REFRESH,
+      path: "/api/v1/auth",
+      maxAge: 0,
+    });
     sendSuccess(res, null, "Admin logout successful");
+  });
+
+  // Admin-specific token refresh — rotates admin_access_token using admin_refresh_token.
+  // Uses the same underlying refresh service as the customer refresh, but reads/writes
+  // admin-scoped cookies only. Never touches access_token or refresh_token.
+  adminRefresh = asyncHandler(async (req: Request, res: Response) => {
+    const refreshToken = req.cookies.admin_refresh_token;
+
+    const { accessToken, refreshToken: newRefreshToken } = await authService.refresh(
+      refreshToken,
+      req.ipAddress
+    );
+
+    res.cookie("admin_access_token", accessToken, COOKIE_OPTIONS_ACCESS);
+    res.cookie("admin_refresh_token", newRefreshToken, {
+      ...COOKIE_OPTIONS_REFRESH,
+      path: "/api/v1/auth",
+    });
+
+    sendSuccess(res, null, "Admin token refreshed successfully");
   });
 
   refresh = asyncHandler(async (req: Request, res: Response) => {

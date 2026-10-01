@@ -20,6 +20,7 @@ router.post("/reset-password", authLimiter, controller.resetPassword);
 router.post("/logout", controller.logout);
 router.post("/admin-logout", controller.adminLogout);
 router.post("/refresh", controller.refresh);
+router.post("/admin-refresh", controller.adminRefresh);
 router.get("/verify-email", controller.verifyEmail);
 
 // Verification and RBAC test routes
