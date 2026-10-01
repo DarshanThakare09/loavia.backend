@@ -1,5 +1,5 @@
 import { OrderRepository } from "../repositories/order.repository";
-import { razorpay } from "../utils/razorpay";
+import { razorpay, isRazorpayEnabled } from "../utils/razorpay";
 import { env } from "../config/env";
 import { CouponRepository } from "../repositories/coupon.repository";
 import { CartRepository } from "../repositories/cart.repository";
@@ -187,17 +187,19 @@ export class OrderService {
     // 4. Generate unique Receipt Number
     const receiptNumber = `LOAVIA-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    // 4.5 Create Razorpay Order
+    // 4.5 Create Razorpay Order (only if payment gateway is configured)
     let razorpayOrderId = "";
-    try {
-      const razorpayOrder = await razorpay.orders.create({
-        amount: totals.totalAmount,
-        currency: "INR",
-        receipt: receiptNumber,
-      });
-      razorpayOrderId = razorpayOrder.id;
-    } catch (razorError) {
-      throw new BadRequestError("Failed to initiate gateway payment session. Please try again.");
+    if (isRazorpayEnabled) {
+      try {
+        const razorpayOrder = await razorpay.orders.create({
+          amount: totals.totalAmount,
+          currency: "INR",
+          receipt: receiptNumber,
+        });
+        razorpayOrderId = razorpayOrder.id;
+      } catch (razorError) {
+        throw new BadRequestError("Failed to initiate gateway payment session. Please try again.");
+      }
     }
 
     let reserved = false;

@@ -42,6 +42,12 @@ function generateWebhookSignature(body: string, secret: string): string {
 async function runTests() {
   console.log("🚀 Starting Payment Module E2E Integration Tests...");
 
+  // Skip Razorpay-dependent tests when credentials are not configured
+  if (!env.RAZORPAY_KEY_SECRET || !env.RAZORPAY_WEBHOOK_SECRET) {
+    console.warn("⚠️  RAZORPAY_KEY_SECRET / RAZORPAY_WEBHOOK_SECRET not set — skipping payment tests.");
+    process.exit(0);
+  }
+
   if (!redis.isOpen) {
     await redis.connect();
   }
@@ -200,7 +206,7 @@ async function runTests() {
     // 4. Test client-side /payments/verify (Valid signature path)
     console.log("💳 Testing Payment Verification (Client Signature)...");
     const payId = `pay_test_${Date.now()}`;
-    const clientSig = generateClientSignature(razorOrderId, payId, env.RAZORPAY_KEY_SECRET);
+    const clientSig = generateClientSignature(razorOrderId, payId, env.RAZORPAY_KEY_SECRET!);
 
     const verifyRes = await fetch(`${baseUrl}/payments/verify`, {
       method: "POST",
@@ -310,7 +316,7 @@ async function runTests() {
     };
 
     const webhookBodyStr = JSON.stringify(webhookPayload);
-    const webhookSig = generateWebhookSignature(webhookBodyStr, env.RAZORPAY_WEBHOOK_SECRET);
+    const webhookSig = generateWebhookSignature(webhookBodyStr, env.RAZORPAY_WEBHOOK_SECRET!);
 
     // Call Webhook POST endpoint
     const webhookRes = await fetch(`${baseUrl}/payments/webhook`, {
@@ -432,7 +438,7 @@ async function runTests() {
     }
 
     const payIdLate1 = `pay_late_1_${Date.now()}`;
-    const sigLate1 = generateClientSignature(lateData1.data.razorpayOrderId, payIdLate1, env.RAZORPAY_KEY_SECRET);
+    const sigLate1 = generateClientSignature(lateData1.data.razorpayOrderId, payIdLate1, env.RAZORPAY_KEY_SECRET!);
 
     const verifyLateRes1 = await fetch(`${baseUrl}/payments/verify`, {
       method: "POST",
@@ -489,7 +495,7 @@ async function runTests() {
     });
 
     const payIdLate2 = `pay_late_2_${Date.now()}`;
-    const sigLate2 = generateClientSignature(lateData2.data.razorpayOrderId, payIdLate2, env.RAZORPAY_KEY_SECRET);
+    const sigLate2 = generateClientSignature(lateData2.data.razorpayOrderId, payIdLate2, env.RAZORPAY_KEY_SECRET!);
 
     const verifyLateRes2 = await fetch(`${baseUrl}/payments/verify`, {
       method: "POST",

@@ -9,7 +9,7 @@ import { redis } from "../config/redis";
 import { BadRequestError } from "../errors/BadRequestError";
 import { NotFoundError } from "../errors/NotFoundError";
 import { OrderStatus, PaymentStatus, PaymentMethod, ShipmentStatus } from "@prisma/client";
-import { razorpay } from "../utils/razorpay";
+import { razorpay, isRazorpayEnabled } from "../utils/razorpay";
 import { EmailQueue } from "../queues/email.queue";
 import { logger } from "../config/logger";
 
@@ -19,6 +19,9 @@ export function verifySignature(
   razorpayPaymentId: string,
   razorpaySignature: string
 ): boolean {
+  if (!isRazorpayEnabled || !env.RAZORPAY_KEY_SECRET) {
+    throw new BadRequestError("Payment gateway is not configured");
+  }
   const text = `${razorpayOrderId}|${razorpayPaymentId}`;
   const generatedSignature = crypto
     .createHmac("sha256", env.RAZORPAY_KEY_SECRET)
@@ -28,6 +31,9 @@ export function verifySignature(
 }
 
 export function verifyWebhookSignature(rawBody: string, signature: string): boolean {
+  if (!isRazorpayEnabled || !env.RAZORPAY_WEBHOOK_SECRET) {
+    return false; // Silently reject webhooks when not configured
+  }
   const expectedSignature = crypto
     .createHmac("sha256", env.RAZORPAY_WEBHOOK_SECRET)
     .update(rawBody)

@@ -5,7 +5,7 @@ import { sendSuccess } from "../utils/apiResponse";
 import { verifyPaymentSchema, retryPaymentSchema } from "../validators/payment.validator";
 import { asyncHandler } from "../utils/asyncHandler";
 import { BadRequestError } from "../errors/BadRequestError";
-import { razorpay } from "../utils/razorpay";
+import { razorpay, isRazorpayEnabled } from "../utils/razorpay";
 import { OrderRepository } from "../repositories/order.repository";
 import { OrderStatus } from "@prisma/client";
 
@@ -16,6 +16,10 @@ export class PaymentController {
 
   // POST /api/v1/payments/verify
   verifyPayment = asyncHandler(async (req: Request, res: Response) => {
+    if (!isRazorpayEnabled) {
+      res.status(503).json({ success: false, message: "Online payment is not available at this time" });
+      return;
+    }
     const userId = req.user?.id;
     const ipAddress = req.ip;
 
@@ -27,6 +31,10 @@ export class PaymentController {
 
   // POST /api/v1/payments/retry
   retryPayment = asyncHandler(async (req: Request, res: Response) => {
+    if (!isRazorpayEnabled) {
+      res.status(503).json({ success: false, message: "Online payment is not available at this time" });
+      return;
+    }
     const userId = req.user!.id;
     const { orderId } = retryPaymentSchema.parse(req.body);
 
